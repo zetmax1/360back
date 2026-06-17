@@ -29,7 +29,7 @@ class Settings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        return init_settings, dotenv_settings, env_settings
+        return init_settings, env_settings, dotenv_settings
 
     # ── Database ────────────────────────────────────────────────────────────
     DATABASE_URL: str
