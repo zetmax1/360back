@@ -6,7 +6,7 @@ services:
     ports:
       - "8089:8000"      # host:container — nginx/external traffic hits 8089
     volumes:
-      - uploads:/var/app/uploads
+      - uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
