@@ -17,6 +17,7 @@ email-validator==2.3.0
 factory_boy==3.3.3
 Faker==40.21.0
 fastapi==0.136.3
+git-filter-repo==2.47.0
 greenlet==3.5.1
 h11==0.16.0
 httpcore==1.0.9

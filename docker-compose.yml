@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build: .
@@ -32,10 +30,11 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    env_file: .env
     environment:
-      POSTGRES_DB: tour360_prod
-      POSTGRES_USER: tour360_app
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: ${POSTGRES_DB:-tour360_prod}
+      POSTGRES_USER: ${POSTGRES_USER:-tour360_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zetmax111}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -43,31 +42,22 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    secrets:
-      - db_password
     # No 'ports' mapping — DB stays internal to the Docker network only
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server /etc/redis/redis.conf --requirepass-file /run/secrets/redis_password
+    env_file: .env
+    command: redis-server /etc/redis/redis.conf --requirepass ${REDIS_PASSWORD:-changeme}
     volumes:
       - redis_data:/data
       - ./redis.conf:/etc/redis/redis.conf:ro
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"] # wait, the prompt says redis-cli -a YOUR_PASSWORD ping. But we are using a secret file. Let's stick to the prompt.
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
-    secrets:
-      - redis_password
     # No 'ports' mapping — Redis stays internal only
-
-secrets:
-  db_password:
-    file: ./secrets/db_password.txt
-  redis_password:
-    file: ./secrets/redis_password.txt
 
 volumes:
   postgres_data:
