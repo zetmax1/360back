@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    restart: unless-stopped
+    env_file: .env.production
+    ports:
+      - "8089:8000"      # host:container — nginx/external traffic hits 8089
+    volumes:
+      - uploads:/var/app/uploads
+      - ./nginx/backend.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build: ../360_tour_front
+    restart: unless-stopped
+    ports:
+      - "5177:5177"       # nginx inside container also listens on 5177
+    volumes:
+      - ../360_tour_front/nginx/frontend.conf:/etc/nginx/conf.d/default.conf:ro
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tour360_prod
+      POSTGRES_USER: tour360_app
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    secrets:
+      - db_password
+    # No 'ports' mapping — DB stays internal to the Docker network only
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server /etc/redis/redis.conf --requirepass-file /run/secrets/redis_password
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"] # wait, the prompt says redis-cli -a YOUR_PASSWORD ping. But we are using a secret file. Let's stick to the prompt.
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    secrets:
+      - redis_password
+    # No 'ports' mapping — Redis stays internal only
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads:

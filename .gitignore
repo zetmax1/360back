@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Environment — NEVER commit real env files
+.env
+.env.local
+.env.production
+.env.*.local
+!.env.example
+!.env.production.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+test.db
+
+# Uploads (user data — never commit)
+uploads/
+
+# Alembic (keep migrations, not generated pycache)
+migrations/__pycache__/
+
+# Misc
+*.log
+*.pid
+output.txt
+
+# Scratch/debug files
+fix_*.py
+patch_*.py
+profile_*.py
+test_*.py
+!tests/
