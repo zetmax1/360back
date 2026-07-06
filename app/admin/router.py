@@ -10,7 +10,7 @@ NOTE: Frontend API module calls these at /admin/users/* paths.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +29,13 @@ class CreateUserRequest(BaseModel):
     email: EmailStr
     password: str
     role: UserRole = UserRole.viewer
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
 
 
 @router.get("/users", response_model=dict)
@@ -96,11 +103,14 @@ async def toggle_user_active(
     user_id: str,
     body: ActiveUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_admin: User = Depends(require_admin),
 ) -> dict:
     user = await db.get(User, user_id)
     if not user:
         raise NotFoundError(f"User '{user_id}' not found")
+    # Prevent admin from deactivating themselves
+    if user_id == current_admin.id and not body.is_active:
+        raise ConflictError("You cannot deactivate your own account")
     user.is_active = body.is_active
     await db.flush()
     return success_response(UserAdminOut.model_validate(user).model_dump())
@@ -110,8 +120,11 @@ async def toggle_user_active(
 async def delete_user(
     user_id: str,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_admin: User = Depends(require_admin),
 ) -> dict:
+    # Prevent admin from deleting themselves
+    if user_id == current_admin.id:
+        raise ConflictError("You cannot delete your own account")
     user = await db.get(User, user_id)
     if not user:
         raise NotFoundError(f"User '{user_id}' not found")

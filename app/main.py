@@ -201,16 +201,13 @@ def create_app() -> FastAPI:
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
 
         # HSTS — tell browsers to always use HTTPS (1 year, include subdomains)
         if settings.is_production:
             response.headers["Strict-Transport-Security"] = (
                 "max-age=31536000; includeSubDomains; preload"
             )
-
-        # Force CORS headers for static files
-        if request.url.path.startswith("/scenes/"):
-            response.headers["Access-Control-Allow-Origin"] = "*"
 
         return response
 
@@ -242,17 +239,23 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="Not found")
 
         file_path = Path(settings.UPLOAD_DIR) / filename
-        if not file_path.exists():
+        # Prevent path traversal
+        resolved = file_path.resolve()
+        upload_resolved = Path(settings.UPLOAD_DIR).resolve()
+        if not str(resolved).startswith(str(upload_resolved)):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Not found")
+
+        if not resolved.is_file():
             from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Not found")
 
         return FileResponse(
-            file_path,
+            resolved,
             media_type="image/jpeg",
             headers={
                 "Cache-Control": "public, max-age=31536000, immutable",
                 "ETag": f'"{filename}"',
-                "Access-Control-Allow-Origin": "*",
             },
         )
 

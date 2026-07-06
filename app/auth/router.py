@@ -16,8 +16,10 @@ from app.auth.schemas import (
     UserOut,
 )
 from app.auth.utils import create_access_token, create_refresh_token
+from app.config import settings
 from app.database import get_db, get_redis
 from app.dependencies import get_current_user
+from app.exceptions import NotFoundError
 from app.models.user import User
 from app.responses import success_response
 
@@ -26,14 +28,21 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/register", response_model=dict, status_code=201)
+@limiter.limit("3/hour")
 async def register(
+    request: Request,
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
     Create the first admin account.
     Only succeeds when NO admin user exists yet (bootstrap endpoint).
+    Disabled entirely in production — use the CLI script instead.
     """
+    # Completely disable in production to prevent any enumeration
+    if settings.is_production:
+        raise NotFoundError("Not found")
+
     user = await auth_service.register_first_admin(body.email, body.password, db)
     return success_response(UserOut.model_validate(user).model_dump())
 
@@ -59,7 +68,9 @@ async def login(
 
 
 @router.post("/refresh", response_model=dict)
+@limiter.limit("30/minute")
 async def refresh(
+    request: Request,
     body: RefreshRequest,
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
