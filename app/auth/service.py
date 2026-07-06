@@ -15,7 +15,7 @@ from app.auth.utils import (
     verify_password,
 )
 from app.config import settings
-from app.exceptions import ConflictError, ForbiddenError, UnauthorizedError
+from app.exceptions import ConflictError, ForbiddenError, UnauthorizedError, NotFoundError
 from app.models.user import User, UserRole
 
 logger = logging.getLogger(__name__)
@@ -35,13 +35,11 @@ async def register_first_admin(
     stmt = select(func.count()).select_from(User).where(User.role == UserRole.admin)
     count = (await db.execute(stmt)).scalar_one()
     if count > 0:
-        raise ConflictError(
-            "An admin account already exists. Contact your administrator."
-        )
+        raise NotFoundError("Not found")
 
     existing = await db.execute(select(User).where(User.email == email))
     if existing.scalar_one_or_none():
-        raise ConflictError("Email already registered")
+        raise NotFoundError("Not found")
 
     user = User(
         email=email,
